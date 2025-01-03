@@ -10,7 +10,6 @@ tmp/
 *.iws
 *.iml
 out
-*.log
 
 # gradle build
 .gradle
