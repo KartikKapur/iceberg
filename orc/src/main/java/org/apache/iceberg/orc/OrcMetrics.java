@@ -117,6 +117,7 @@ public class OrcMetrics {
     }
   }
 
+  @SuppressWarnings("checkstyle:CyclomaticComplexity")
   private static Metrics buildOrcMetrics(
       final long numOfRows,
       final TypeDescription orcSchema,
@@ -163,6 +164,8 @@ public class OrcMetrics {
 
         if (metricsMode == MetricsModes.None.get()) {
           continue;
+        } else if (metricsMode == MetricsModes.FullNumericElseCounts.get()) {
+          throw new RuntimeException("Full Numeric Values Stats not Currently Supported for ORC");
         }
 
         columnSizes.put(fieldId, colStat.getBytesOnDisk());

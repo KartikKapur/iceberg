@@ -140,7 +140,9 @@ public class ParquetUtil {
           // of the ones from Parquet
           if (metricsMode != MetricsModes.Counts.get() && !fieldMetricsMap.containsKey(fieldId)) {
             Types.NestedField field = fileSchema.findField(fieldId);
-            if (field != null && stats.hasNonNullValue() && shouldStoreBounds(column, fileSchema)) {
+            if (field != null
+                && stats.hasNonNullValue()
+                && shouldStoreBounds(column, fileSchema, metricsMode)) {
               Literal<?> min =
                   ParquetConversions.fromParquetPrimitive(
                       field.type(), column.getPrimitiveType(), stats.genericGetMin());
@@ -239,7 +241,8 @@ public class ParquetUtil {
   }
 
   // we allow struct nesting, but not maps or arrays
-  private static boolean shouldStoreBounds(ColumnChunkMetaData column, Schema schema) {
+  private static boolean shouldStoreBounds(
+      ColumnChunkMetaData column, Schema schema, MetricsMode metricsMode) {
     if (column.getPrimitiveType().getPrimitiveTypeName() == PrimitiveType.PrimitiveTypeName.INT96) {
       // stats for INT96 are not reliable
       return false;
@@ -248,6 +251,10 @@ public class ParquetUtil {
     ColumnPath columnPath = column.getPath();
     Iterator<String> pathIterator = columnPath.iterator();
     Type currentType = schema.asStruct();
+    if (metricsMode == MetricsModes.FullNumericElseCounts.get()) {
+      // for numeric primatives explcitly
+      return columnPath.size() == 1 && isNumericType(column.getPrimitiveType());
+    }
 
     while (pathIterator.hasNext()) {
       if (currentType == null || !currentType.isStructType()) {
@@ -279,7 +286,8 @@ public class ParquetUtil {
       MetricsMode metricsMode) {
     Literal<T> currentMin = (Literal<T>) lowerBounds.get(id);
     if (currentMin == null || min.comparator().compare(min.value(), currentMin.value()) < 0) {
-      if (metricsMode == MetricsModes.Full.get()) {
+      if (metricsMode == MetricsModes.Full.get()
+          || metricsMode == MetricsModes.FullNumericElseCounts.get()) {
         lowerBounds.put(id, min);
       } else {
         MetricsModes.Truncate truncateMode = (MetricsModes.Truncate) metricsMode;
@@ -310,7 +318,8 @@ public class ParquetUtil {
       MetricsMode metricsMode) {
     Literal<T> currentMax = (Literal<T>) upperBounds.get(id);
     if (currentMax == null || max.comparator().compare(max.value(), currentMax.value()) > 0) {
-      if (metricsMode == MetricsModes.Full.get()) {
+      if (metricsMode == MetricsModes.Full.get()
+          || metricsMode == MetricsModes.FullNumericElseCounts.get()) {
         upperBounds.put(id, max);
       } else {
         MetricsModes.Truncate truncateMode = (MetricsModes.Truncate) metricsMode;
@@ -405,6 +414,18 @@ public class ParquetUtil {
       }
     }
     return primitiveType.getPrimitiveTypeName() == PrimitiveType.PrimitiveTypeName.INT32;
+  }
+
+  public static boolean isNumericType(PrimitiveType primitiveType) {
+    switch (primitiveType.getPrimitiveTypeName()) {
+      case INT32:
+      case INT64:
+      case FLOAT:
+      case DOUBLE:
+        return true;
+      default:
+        return false;
+    }
   }
 
   /**

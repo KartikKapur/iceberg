@@ -18,6 +18,7 @@
  */
 package org.apache.iceberg.orc;
 
+import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
@@ -31,6 +32,7 @@ import org.apache.iceberg.MetricsConfig;
 import org.apache.iceberg.ParameterizedTestExtension;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.TestMetrics;
+import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.data.orc.GenericOrcWriter;
 import org.apache.iceberg.io.FileAppender;
@@ -40,6 +42,9 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.types.Type;
+import org.apache.iceberg.types.Types.IntegerType;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /** Test Metrics for ORC. */
@@ -78,6 +83,15 @@ public class TestOrcMetrics extends TestMetrics {
     throw new UnsupportedOperationException("supportsSmallRowGroups = " + supportsSmallRowGroups());
   }
 
+  private static final Schema SIMPLE_INT_SCHEMA =
+      new Schema(required(1, "intCol", IntegerType.get()));
+
+  private Record buildSimpleTestRecord() {
+    Record record = GenericRecord.create(SIMPLE_INT_SCHEMA);
+    record.setField("intCol", Integer.MAX_VALUE);
+    return record;
+  }
+
   private Metrics getMetrics(
       Schema schema,
       OutputFile file,
@@ -105,6 +119,20 @@ public class TestOrcMetrics extends TestMetrics {
 
   private boolean isBinaryType(Type type) {
     return BINARY_TYPES.contains(type.typeId());
+  }
+
+  @Override
+  @TestTemplate
+  public void testFullNumericMetricsMode() throws IOException {
+    Assertions.assertThatThrownBy(
+            () ->
+                getMetrics(
+                    SIMPLE_INT_SCHEMA,
+                    MetricsConfig.fromProperties(
+                        ImmutableMap.of(
+                            "write.metadata.metrics.default", "full_numeric_else_counts")),
+                    buildSimpleTestRecord()))
+        .isInstanceOf(RuntimeException.class);
   }
 
   @Override

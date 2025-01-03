@@ -43,6 +43,8 @@ public class MetricsModes {
       return Counts.get();
     } else if ("full".equalsIgnoreCase(mode)) {
       return Full.get();
+    } else if ("full_numeric_else_counts".equalsIgnoreCase(mode)) {
+      return FullNumericElseCounts.get();
     }
 
     Matcher truncateMatcher = TRUNCATE.matcher(mode.toLowerCase(Locale.ENGLISH));
@@ -131,6 +133,20 @@ public class MetricsModes {
     @Override
     public int hashCode() {
       return Integer.hashCode(length);
+    }
+  }
+
+  /** Compute Bounds for All Numeric Values. */
+  public static class FullNumericElseCounts extends ProxySerializableMetricsMode {
+    private static final FullNumericElseCounts INSTANCE = new FullNumericElseCounts();
+
+    public static FullNumericElseCounts get() {
+      return INSTANCE;
+    }
+
+    @Override
+    public String toString() {
+      return "full_numeric_else_counts";
     }
   }
 

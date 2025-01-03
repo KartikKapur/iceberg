@@ -110,7 +110,7 @@ public abstract class TestMetrics {
       new Schema(
           optional(1, "floatCol", FloatType.get()), optional(2, "doubleCol", DoubleType.get()));
 
-  private static final Record FLOAT_DOUBLE_RECORD_1 = createRecordWithFloatAndDouble(1.2F, 3.4D);
+  static final Record FLOAT_DOUBLE_RECORD_1 = createRecordWithFloatAndDouble(1.2F, 3.4D);
   private static final Record FLOAT_DOUBLE_RECORD_2 = createRecordWithFloatAndDouble(5.6F, 7.8D);
   private static final Record NAN_ONLY_RECORD =
       createRecordWithFloatAndDouble(Float.NaN, Double.NaN);
@@ -316,6 +316,26 @@ public abstract class TestMetrics {
     assertThat(metrics.lowerBounds()).hasSize(1);
     assertThat(metrics.upperBounds()).hasSize(1);
     assertBounds(3, LongType.get(), 100L, 100L, metrics);
+  }
+
+  @TestTemplate
+  public void testFullNumericMetricsMode() throws IOException {
+    Metrics metrics =
+        getMetrics(
+            NESTED_SCHEMA,
+            MetricsConfig.fromProperties(
+                ImmutableMap.of("write.metadata.metrics.default", "full_numeric_else_counts")),
+            buildNestedTestRecord());
+    assertCounts(1, 1L, 0L, metrics);
+    assertBounds(1, Types.IntegerType.get(), Integer.MAX_VALUE, Integer.MAX_VALUE, metrics);
+    assertCounts(3, 1L, 0L, metrics);
+    assertBounds(3, Types.LongType.get(), null, null, metrics);
+    assertCounts(5, 1L, 0L, metrics);
+    assertBounds(5, Types.LongType.get(), null, null, metrics);
+    assertCounts(6, 1L, 0L, metrics);
+    assertBounds(6, Types.BinaryType.get(), null, null, metrics);
+    assertCounts(7, 1L, 0L, 1L, metrics);
+    assertBounds(7, Types.DoubleType.get(), null, null, metrics);
   }
 
   private Record buildNestedTestRecord() {
